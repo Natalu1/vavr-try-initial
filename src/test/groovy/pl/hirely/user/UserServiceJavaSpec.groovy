@@ -14,7 +14,8 @@ class UserServiceJavaSpec extends Specification {
     private UserClient userClient = Mock()
 
     @Subject
-    private UserService userService = new UserServiceJava(userClient)
+//    private UserService userService = new UserServiceJava(userClient)
+    private UserService userService = new UserServiceVavr(userClient)
 
     def "should return all users"() {
 
@@ -53,11 +54,42 @@ class UserServiceJavaSpec extends Specification {
         userClient.findUsers() >> [
                 new UserDto (name:"Anna", birthDate: LocalDate.of(1988, 07, 21)),
                 new UserDto(name: "Adam", birthDate: LocalDate.of(1995,01,01))]
+
+        when:
+        def actual = userService.getAllUserNames()
+
+        then:
+        actual.size() == 2
+        actual as Set == ["Anna","Adam"] as Set
+
+    }
+    def "should rethrow exception when name failed"() {
+        given:
+        userClient.findUsers() >> {throw clientException}
+//        userClient.findUsers() >> {throw new InternalServerErrorException()}
         when:
         userService.getAllUserNames()
 
+        then:
+        thrown(UsersFetchException)
+
+        where:
+//        clientException << [new InternalServerErrorException()]
+        clientException << [new InternalServerErrorException(), new NotFoundException()]
 
     }
+
+    def "should1"(){
+        given:
+        userClient.findUsers() >> []
+
+        when:
+        def actual = userService.getCommaSeparateUserNames()
+
+        then:
+        actual == "NO_USERS"
+    }
+
 
 
 //    def "Name"(){

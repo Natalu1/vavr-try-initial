@@ -8,5 +8,8 @@ public interface UserService {
 
     List<String> getAllUserNames();
 
+    String getCommaSeparateUserNames();
+
+
 
 }
