@@ -44,6 +44,15 @@ public class UserServiceVavr implements UserService {
                 .getOrElseThrow(UsersFetchException::new);
     }
 
+    private String commaSeparatedUserNames() throws InternalServerErrorException {
+        List<UserDto> users = userClient.findUsers();
+        if (users.isEmpty()) {
+            return "NO_USERS";
+        }
+        return users.stream()
+                .map(UserDto::getName)
+                .collect(Collectors.joining(", "));
+    }
     @Override
     public UserDto getUserByName(String name) {
         return Try.of(()->userClient.findByName(name))
@@ -54,22 +63,8 @@ public class UserServiceVavr implements UserService {
 //                .getOrElseThrow(UsersFetchException::new)
 //        ).getOrElseThrow(UsersFetchException::new);
     }
-
     @Override
     public String getUserStatusByName(String name) {
         return null;
     }
-
-
-    private String commaSeparatedUserNames() throws InternalServerErrorException {
-        List<UserDto> users = userClient.findUsers();
-        if (users.isEmpty()) {
-            return "NO_USERS";
-        }
-        return users.stream()
-                .map(UserDto::getName)
-                .collect(Collectors.joining(", "));
-    }
-
-
 }

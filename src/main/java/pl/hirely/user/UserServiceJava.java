@@ -78,9 +78,11 @@ public class UserServiceJava implements UserService {
             if( byName.isDefined()){
                 return "User found";
             }
-            return "User with name:" + name + "does not exist";
-        } catch (InternalServerErrorException | NotFoundException e) {
-            return  "Server error while fetching user with " + name ;
+            return String.format("User with name: %s does not exist", name);
+        } catch (InternalServerErrorException e){
+            return String.format("Server error while fetching user with %s", name);}
+        catch (NotFoundException e){
+            return String.format("Not found while fetching user with name: %s",name);
         }
     }
 

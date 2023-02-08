@@ -128,7 +128,7 @@ class UserServiceJavaSpec extends Specification {
         where:
         clientException << [new InternalServerErrorException(), new NotFoundException()]
     }
-    def "should throw user fetgetUserDto null"(){
+    def "should throw users fetch exception when client return empty option"(){
         given:
         userClient.findByName("Olga") >> Option.none()
 
@@ -138,15 +138,41 @@ class UserServiceJavaSpec extends Specification {
         then:
         thrown(UsersFetchException)
     }
-    def "should getUserDto1"(){
+    def "should get user status by name"(){
         given:
         userClient.findByName("Anna") >> Option.of(new UserDto(name:"Anna"))
-
         when:
         def actual = userService.getUserStatusByName("Anna")
-
         then:
         actual == "User found"
+    }
+    def "should get User status  when name  not found"(){
+        given:
+        userClient.findByName("Anna") >> Option.none()
+        when:
+        def actual = userService.getUserStatusByName("Anna")
+        then:
+        actual == "User with name: Anna does not exist"
+    }
+    def "should  exception when name failed"() {
+        given:
+        userClient.findByName("Anna") >> {throw new InternalServerErrorException()}
+        when:
+        userService.getUserStatusByName("Anna")
+        then:
+        "Server error while fetching user with Anna"
+        where:
+        clientException << new InternalServerErrorException()
+    }
+    def "should  exception when name exception"() {
+        given:
+        userClient.findByName("Anna") >> {throw new NotFoundException()}
+        when:
+        userService.getUserStatusByName("Anna")
+        then:
+        "Not found while fetching user with name: Anna"
+        where:
+        clientException << new NotFoundException()
     }
 
 
