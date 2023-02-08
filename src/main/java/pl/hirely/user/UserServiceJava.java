@@ -1,5 +1,6 @@
 package pl.hirely.user;
 
+import io.vavr.control.Option;
 import io.vavr.control.Try;
 import pl.hirely.user.client.InternalServerErrorException;
 import pl.hirely.user.client.NotFoundException;
@@ -49,13 +50,41 @@ public class UserServiceJava implements UserService {
             if (listNames.isEmpty()){
                 return "No_users";
             }
-                return String.join(",", listNames);
+                return String.join(", ", listNames);
 
         } catch (InternalServerErrorException | NotFoundException e) {
             throw new UsersFetchException();
         }
-
     }
+
+    @Override
+    public UserDto getUserByName(String name) {
+        try {
+            Option<UserDto> byName = userClient.findByName(name);
+            if( byName.isEmpty()){
+                return  byName.getOrElseThrow(()->new UsersFetchException());
+            }
+            return byName
+                    .getOrElseThrow(()->new UsersFetchException());
+        } catch (InternalServerErrorException | NotFoundException e) {
+            throw new UsersFetchException();
+        }
+    }
+
+    @Override
+    public String getUserStatusByName(String name) {
+        try {
+            Option<UserDto> byName = userClient.findByName(name);
+            if( byName.isDefined()){
+                return "User found";
+            }
+            return "User with name:" + name + "does not exist";
+        } catch (InternalServerErrorException | NotFoundException e) {
+            return  "Server error while fetching user with " + name ;
+        }
+    }
+
+
 }
 
 

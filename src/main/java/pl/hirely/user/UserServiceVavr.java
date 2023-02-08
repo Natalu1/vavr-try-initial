@@ -1,5 +1,6 @@
 package pl.hirely.user;
 
+import io.vavr.CheckedFunction0;
 import io.vavr.control.Try;
 import pl.hirely.user.client.InternalServerErrorException;
 import pl.hirely.user.client.UserClient;
@@ -23,12 +24,17 @@ public class UserServiceVavr implements UserService {
 
     @Override
     public List<String> getAllUserNames() {
-        return Try.of(
-                        () -> userClient.findUsers()
-                                .stream()
-                                .map(UserDto::getName)
-                                .toList()
-                )
+        return Try.of(userClient::findUsers)
+                .map(userDtos -> userDtos.stream()
+                        .map(UserDto::getName)
+                        .toList())
+
+
+//                        () -> userClient.findUsers()
+//                                .stream()
+//                                .map(UserDto::getName)
+//                                .toList()
+
                 .getOrElseThrow(UsersFetchException::new);
     }
 
@@ -36,6 +42,22 @@ public class UserServiceVavr implements UserService {
     public String getCommaSeparateUserNames() {
         return Try.of(this::commaSeparatedUserNames)
                 .getOrElseThrow(UsersFetchException::new);
+    }
+
+    @Override
+    public UserDto getUserByName(String name) {
+        return Try.of(()->userClient.findByName(name))
+                .map(user -> user.get())
+                .getOrElseThrow(UsersFetchException::new);
+
+//        return Try.of( () -> userClient.findByName(name)
+//                .getOrElseThrow(UsersFetchException::new)
+//        ).getOrElseThrow(UsersFetchException::new);
+    }
+
+    @Override
+    public String getUserStatusByName(String name) {
+        return null;
     }
 
 
@@ -46,7 +68,7 @@ public class UserServiceVavr implements UserService {
         }
         return users.stream()
                 .map(UserDto::getName)
-                .collect(Collectors.joining(","));
+                .collect(Collectors.joining(", "));
     }
 
 

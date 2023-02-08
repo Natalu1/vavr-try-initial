@@ -1,5 +1,6 @@
 package pl.hirely.user
 
+import io.vavr.control.Option
 import pl.hirely.user.client.InternalServerErrorException
 import pl.hirely.user.client.NotFoundException
 import pl.hirely.user.client.UserClient
@@ -39,6 +40,15 @@ class UserServiceVavrSpec extends Specification {
 
         where:
         clientException << [new InternalServerErrorException(), new NotFoundException()]
+    }
+    def "should getUserDto null"(){
+        given:
+        userClient.findByName("Olga") >> Option.none()
 
+        when:
+        def actual = userService.getUserByName("Olga")
+
+        then:
+        thrown(UsersFetchException)
     }
 }

@@ -1,5 +1,6 @@
 package pl.hirely.user
 
+import io.vavr.control.Option
 import pl.hirely.user.client.InternalServerErrorException
 import pl.hirely.user.client.NotFoundException
 import pl.hirely.user.client.UserClient
@@ -14,8 +15,8 @@ class UserServiceJavaSpec extends Specification {
     private UserClient userClient = Mock()
 
     @Subject
-//    private UserService userService = new UserServiceJava(userClient)
-    private UserService userService = new UserServiceVavr(userClient)
+    private UserService userService = new UserServiceJava(userClient)
+//    private UserService userService = new UserServiceVavr(userClient)
 
     def "should return all users"() {
 
@@ -89,6 +90,69 @@ class UserServiceJavaSpec extends Specification {
         then:
         actual == "NO_USERS"
     }
+
+    def "should getCommaSeparateUserNames "(){
+        given:
+        userClient.findUsers() >> [
+                new UserDto (name:"Anna", birthDate: LocalDate.of(1988, 07, 21)),
+                new UserDto(name: "Adam", birthDate: LocalDate.of(1995,01,01))]
+
+        when:
+        def actual = userService.getCommaSeparateUserNames()
+
+        then:
+        actual  == "Anna, Adam"
+
+    }
+
+    def "should getUserDto"(){
+        given:
+        userClient.findByName("Anna") >> Option.of(new UserDto(name:"Anna"))
+
+        when:
+        def actual = userService.getUserByName("Anna")
+
+        then:
+        actual.name == "Anna"
+    }
+
+    def "should  exception when client failed"() {
+        given:
+        userClient.findByName(null) >> {throw clientException}
+        when:
+        userService.getUserByName(null)
+
+        then:
+        thrown(UsersFetchException)
+
+        where:
+        clientException << [new InternalServerErrorException(), new NotFoundException()]
+    }
+    def "should throw user fetgetUserDto null"(){
+        given:
+        userClient.findByName("Olga") >> Option.none()
+
+        when:
+        userService.getUserByName("Olga")
+
+        then:
+        thrown(UsersFetchException)
+    }
+    def "should getUserDto1"(){
+        given:
+        userClient.findByName("Anna") >> Option.of(new UserDto(name:"Anna"))
+
+        when:
+        def actual = userService.getUserStatusByName("Anna")
+
+        then:
+        actual == "User found"
+    }
+
+
+
+
+
 
 
 

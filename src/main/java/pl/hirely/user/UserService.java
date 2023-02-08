@@ -10,6 +10,10 @@ public interface UserService {
 
     String getCommaSeparateUserNames();
 
+    UserDto getUserByName(String name);
+
+    String getUserStatusByName(String name);
+
 
 
 }
