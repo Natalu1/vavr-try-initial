@@ -1,12 +1,15 @@
 package pl.hirely.user;
 
-import io.vavr.CheckedFunction0;
 import io.vavr.control.Try;
 import pl.hirely.user.client.InternalServerErrorException;
+import pl.hirely.user.client.NotFoundException;
 import pl.hirely.user.client.UserClient;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static io.vavr.API.*;
+import static io.vavr.Predicates.instanceOf;
 
 public class UserServiceVavr implements UserService {
 
@@ -53,9 +56,10 @@ public class UserServiceVavr implements UserService {
                 .map(UserDto::getName)
                 .collect(Collectors.joining(", "));
     }
+
     @Override
     public UserDto getUserByName(String name) {
-        return Try.of(()->userClient.findByName(name))
+        return Try.of(() -> userClient.findByName(name))
                 .map(user -> user.get())
                 .getOrElseThrow(UsersFetchException::new);
 
@@ -63,8 +67,27 @@ public class UserServiceVavr implements UserService {
 //                .getOrElseThrow(UsersFetchException::new)
 //        ).getOrElseThrow(UsersFetchException::new);
     }
+
     @Override
     public String getUserStatusByName(String name) {
-        return null;
+        return Try.of(() -> userClient.findByName(name))
+                .map(user -> user.get())
+                .map(user -> "User found")
+                .recover(e -> Match(e).of(
+                        Case($(instanceOf(InternalServerErrorException.class)), String.format("Server error while fetching user with name: %s", name)),
+                        Case($(instanceOf(NotFoundException.class)), String.format("Not found while fetching user with name: %s", name))
+                ))
+                .getOrElse(String.format("User with name: %s does not exist", name));
+
+
+
+
+
     }
+
+    @Override
+    public boolean createUser(UserDto name) {
+        return false;
+    }
+
 }

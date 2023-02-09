@@ -15,16 +15,16 @@ class UserServiceJavaSpec extends Specification {
     private UserClient userClient = Mock()
 
     @Subject
-    private UserService userService = new UserServiceJava(userClient)
-//    private UserService userService = new UserServiceVavr(userClient)
+//    private UserService userService = new UserServiceJava(userClient)
+    private UserService userService = new UserServiceVavr(userClient)
 
     def "should return all users"() {
 
 
         given:
         userClient.findUsers() >> [
-                new UserDto (name:"Anna", birthDate: LocalDate.of(1988, 07, 21)),
-                new UserDto(name: "Adam", birthDate: LocalDate.of(1995,01,01))]
+                new UserDto(name: "Anna", birthDate: LocalDate.of(1988, 07, 21)),
+                new UserDto(name: "Adam", birthDate: LocalDate.of(1995, 01, 01))]
         when:
         def actual = userService.getAllUsers()
 
@@ -32,12 +32,12 @@ class UserServiceJavaSpec extends Specification {
         actual.size() == 2
         actual*.name as Set == ["Anna", "Adam"] as Set
         actual*.birthDate as Set == [LocalDate.of(1988, 07, 21),
-                                     LocalDate.of(1995,01,01)] as Set
+                                     LocalDate.of(1995, 01, 01)] as Set
     }
 
     def "should rethrow exception when client failed"() {
         given:
-        userClient.findUsers() >> {throw clientException}
+        userClient.findUsers() >> { throw clientException }
 //        userClient.findUsers() >> {throw new InternalServerErrorException()}
         when:
         userService.getAllUsers()
@@ -50,23 +50,24 @@ class UserServiceJavaSpec extends Specification {
 
     }
 
-    def "should "(){
+    def "should "() {
         given:
         userClient.findUsers() >> [
-                new UserDto (name:"Anna", birthDate: LocalDate.of(1988, 07, 21)),
-                new UserDto(name: "Adam", birthDate: LocalDate.of(1995,01,01))]
+                new UserDto(name: "Anna", birthDate: LocalDate.of(1988, 07, 21)),
+                new UserDto(name: "Adam", birthDate: LocalDate.of(1995, 01, 01))]
 
         when:
         def actual = userService.getAllUserNames()
 
         then:
         actual.size() == 2
-        actual as Set == ["Anna","Adam"] as Set
+        actual as Set == ["Anna", "Adam"] as Set
 
     }
+
     def "should rethrow exception when name failed"() {
         given:
-        userClient.findUsers() >> {throw clientException}
+        userClient.findUsers() >> { throw clientException }
 //        userClient.findUsers() >> {throw new InternalServerErrorException()}
         when:
         userService.getAllUserNames()
@@ -80,7 +81,7 @@ class UserServiceJavaSpec extends Specification {
 
     }
 
-    def "should1"(){
+    def "should1"() {
         given:
         userClient.findUsers() >> []
 
@@ -91,23 +92,23 @@ class UserServiceJavaSpec extends Specification {
         actual == "NO_USERS"
     }
 
-    def "should getCommaSeparateUserNames "(){
+    def "should getCommaSeparateUserNames "() {
         given:
         userClient.findUsers() >> [
-                new UserDto (name:"Anna", birthDate: LocalDate.of(1988, 07, 21)),
-                new UserDto(name: "Adam", birthDate: LocalDate.of(1995,01,01))]
+                new UserDto(name: "Anna", birthDate: LocalDate.of(1988, 07, 21)),
+                new UserDto(name: "Adam", birthDate: LocalDate.of(1995, 01, 01))]
 
         when:
         def actual = userService.getCommaSeparateUserNames()
 
         then:
-        actual  == "Anna, Adam"
+        actual == "Anna, Adam"
 
     }
 
-    def "should getUserDto"(){
+    def "should getUserDto"() {
         given:
-        userClient.findByName("Anna") >> Option.of(new UserDto(name:"Anna"))
+        userClient.findByName("Anna") >> Option.of(new UserDto(name: "Anna"))
 
         when:
         def actual = userService.getUserByName("Anna")
@@ -118,7 +119,7 @@ class UserServiceJavaSpec extends Specification {
 
     def "should  exception when client failed"() {
         given:
-        userClient.findByName(null) >> {throw clientException}
+        userClient.findByName(null) >> { throw clientException }
         when:
         userService.getUserByName(null)
 
@@ -128,7 +129,8 @@ class UserServiceJavaSpec extends Specification {
         where:
         clientException << [new InternalServerErrorException(), new NotFoundException()]
     }
-    def "should throw users fetch exception when client return empty option"(){
+
+    def "should throw users fetch exception when client return empty option"() {
         given:
         userClient.findByName("Olga") >> Option.none()
 
@@ -138,15 +140,17 @@ class UserServiceJavaSpec extends Specification {
         then:
         thrown(UsersFetchException)
     }
-    def "should get user status by name"(){
+
+    def "should get user status by name"() {
         given:
-        userClient.findByName("Anna") >> Option.of(new UserDto(name:"Anna"))
+        userClient.findByName("Anna") >> Option.of(new UserDto(name: "Anna"))
         when:
         def actual = userService.getUserStatusByName("Anna")
         then:
         actual == "User found"
     }
-    def "should get User status  when name  not found"(){
+
+    def "should get User status  when name  not found"() {
         given:
         userClient.findByName("Anna") >> Option.none()
         when:
@@ -154,9 +158,10 @@ class UserServiceJavaSpec extends Specification {
         then:
         actual == "User with name: Anna does not exist"
     }
+
     def "should  exception when name failed"() {
         given:
-        userClient.findByName("Anna") >> {throw new InternalServerErrorException()}
+        userClient.findByName("Anna") >> { throw new InternalServerErrorException() }
         when:
         userService.getUserStatusByName("Anna")
         then:
@@ -164,9 +169,10 @@ class UserServiceJavaSpec extends Specification {
         where:
         clientException << new InternalServerErrorException()
     }
+
     def "should  exception when name exception"() {
         given:
-        userClient.findByName("Anna") >> {throw new NotFoundException()}
+        userClient.findByName("Anna") >> { throw new NotFoundException() }
         when:
         userService.getUserStatusByName("Anna")
         then:
@@ -174,12 +180,53 @@ class UserServiceJavaSpec extends Specification {
         where:
         clientException << new NotFoundException()
     }
+    def "should  exception when client failed1"() {
+        given:
+        userClient.findByName("Anna") >> { throw clientException }
+        when:
+        def actual = userService.getUserStatusByName("Anna")
 
 
+        then:
+        actual == "Server error while fetching user with Anna"||"Not found while fetching user with name: Anna"
+
+        where:
+        clientException << [new InternalServerErrorException(), new NotFoundException()]
+    }
+
+    def "should return exception message when client throw exception"() {
+        given:
+        userClient.findByName("Paul") >> { throw exceptionThrownByClient }
+
+        when:
+        def actual = userService.getUserStatusByName("Paul")
+
+        then:
+        actual == expectedResult
+
+        where:
+        exceptionThrownByClient | expectedResult
+        new InternalServerErrorException() | "Server error while fetching user with name: Paul"
+        new NotFoundException() | "Not found while fetching user with name: Paul"
+    }
 
 
+    def "param"() {
+        given:
+        userClient.findByName("Anna") >> data
+        when:
+        def actual = userService.getUserStatusByName("Anna")
+        then:
+        actual == expectedActual
+
+        where:
+
+        data                                         || expectedActual
+        Option.of(new UserDto(name: "Anna"))         || "User found"
+        Option.none()                                || "User with name: Anna does not exist"
 
 
+    }
 
 
 //    def "Name"(){

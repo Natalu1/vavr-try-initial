@@ -13,6 +13,7 @@ public interface UserService {
     UserDto getUserByName(String name);
 
     String getUserStatusByName(String name);
+    boolean createUser(UserDto name);
 
 
 
