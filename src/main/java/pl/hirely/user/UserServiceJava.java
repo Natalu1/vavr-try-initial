@@ -1,6 +1,7 @@
 package pl.hirely.user;
 
 import io.vavr.control.Option;
+import pl.hirely.user.client.BadRequestException;
 import pl.hirely.user.client.InternalServerErrorException;
 import pl.hirely.user.client.NotFoundException;
 import pl.hirely.user.client.UserClient;
@@ -50,10 +51,10 @@ public class UserServiceJava implements UserService {
             List<String> listNames = userClient.findUsers().stream()
                     .map(UserDto::getName)
                     .toList();
-            if (listNames.isEmpty()){
+            if (listNames.isEmpty()) {
                 return "No_users";
             }
-                return String.join(", ", listNames);
+            return String.join(", ", listNames);
 
         } catch (InternalServerErrorException | NotFoundException e) {
             throw new UsersFetchException();
@@ -64,11 +65,11 @@ public class UserServiceJava implements UserService {
     public UserDto getUserByName(String name) {
         try {
             Option<UserDto> byName = userClient.findByName(name);
-            if( byName.isEmpty()){
-                return  byName.getOrElseThrow(()->new UsersFetchException());
+            if (byName.isEmpty()) {
+                return byName.getOrElseThrow(() -> new UsersFetchException());
             }
             return byName
-                    .getOrElseThrow(()->new UsersFetchException());
+                    .getOrElseThrow(() -> new UsersFetchException());
         } catch (InternalServerErrorException | NotFoundException e) {
             throw new UsersFetchException();
         }
@@ -78,29 +79,36 @@ public class UserServiceJava implements UserService {
     public String getUserStatusByName(String name) {
         try {
             Option<UserDto> byName = userClient.findByName(name);
-            if( byName.isDefined()){
+            if (byName.isDefined()) {
                 return "User found";
             }
             return String.format("User with name: %s does not exist", name);
-        } catch (InternalServerErrorException e){
-            return String.format("Server error while fetching user with %s", name);}
-        catch (NotFoundException e){
-            return String.format("Not found while fetching user with name: %s",name);
+        } catch (InternalServerErrorException e) {
+            return String.format("Server error while fetching user with %s", name);
+        } catch (NotFoundException e) {
+            return String.format("Not found while fetching user with name: %s", name);
         }
     }
 
     @Override
-    public boolean createUser(UserDto name) {
+    public boolean createUser(UserDto userDto) {
         try {
-            UUID user = userClient.createUser(name);
-            CreateUserUnfulfiilledTask task = new CreateUserUnfulfiilledTask(UserDto u, Reason r);
-            if (user != null) {
-                emailSender.send(String.format("User with id: %s created", name));
+            UUID userId = userClient.createUser(userDto);
+            if (userId != null) {
+                emailSender.send(String.format("User with id: %s created", userDto));
                 return true;
             }
         } catch (InternalServerErrorException e) {
+            CreateUserUnfulfiilledTask task = new CreateUserUnfulfiilledTask(userDto, Reason.INTERNAL_SERVER_ERROR);
+            kafkaClient.send(task);
+        } catch (NotFoundException e) {
+            CreateUserUnfulfiilledTask task = new CreateUserUnfulfiilledTask(userDto, Reason.NOT_FOUND);
+            kafkaClient.send(task);
+        } catch (BadRequestException e) {
+            CreateUserUnfulfiilledTask task = new CreateUserUnfulfiilledTask(userDto, Reason.BAD_REQUEST);
             kafkaClient.send(task);
         }
+        return false;
     }
 
 //    @Override
