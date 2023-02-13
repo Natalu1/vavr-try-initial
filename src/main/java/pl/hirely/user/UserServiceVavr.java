@@ -1,6 +1,7 @@
 package pl.hirely.user;
 
 import io.vavr.control.Try;
+import pl.hirely.user.client.BadRequestException;
 import pl.hirely.user.client.InternalServerErrorException;
 import pl.hirely.user.client.NotFoundException;
 import pl.hirely.user.client.UserClient;
@@ -14,9 +15,13 @@ import static io.vavr.Predicates.instanceOf;
 public class UserServiceVavr implements UserService {
 
     private final UserClient userClient;
+    private final EmailSender emailSender;
+    private final KafkaClient kafkaClient;
 
-    public UserServiceVavr(UserClient userClient) {
+    public UserServiceVavr(UserClient userClient, EmailSender emailSender, KafkaClient kafkaClient) {
         this.userClient = userClient;
+        this.emailSender = emailSender;
+        this.kafkaClient = kafkaClient;
     }
 
     @Override
@@ -73,10 +78,13 @@ public class UserServiceVavr implements UserService {
         return Try.of(() -> userClient.findByName(name))
                 .map(user -> user.get())
                 .map(user -> "User found")
-                .recover(e -> Match(e).of(
-                        Case($(instanceOf(InternalServerErrorException.class)), String.format("Server error while fetching user with name: %s", name)),
-                        Case($(instanceOf(NotFoundException.class)), String.format("Not found while fetching user with name: %s", name))
-                ))
+                .recover(InternalServerErrorException.class, String.format("Server error while fetching user with name %s", name))
+                .recover(NotFoundException.class, String.format("Not found while fetching user with name: %s", name))
+//On match-case
+//                .recover(exception -> Match(exception).of(
+//                        Case($(instanceOf(InternalServerErrorException.class)), String.format("Server error while fetching user with name %s", name)),
+//                        Case($(instanceOf(NotFoundException.class)), String.format("Not found while fetching user with name: %s", name))
+//                ))
                 .getOrElse(String.format("User with name: %s does not exist", name));
 
 
@@ -86,8 +94,15 @@ public class UserServiceVavr implements UserService {
     }
 
     @Override
-    public boolean createUser(UserDto name) {
-        return false;
+    public boolean createUser(UserDto userDto) {
+        return Try.of(() -> userClient.createUser(userDto))
+                .onSuccess(userId -> emailSender.send(String.format("User with id: %s created", userId)))
+                .onFailure(exception -> kafkaClient.send(Match(exception).of(
+                        Case($(instanceOf(BadRequestException.class)), CreateUserUnfulfiilledTask.badRequest(userDto)),
+                        Case($(instanceOf(NotFoundException.class)), CreateUserUnfulfiilledTask.notFound(userDto)),
+                        Case($(instanceOf(InternalServerErrorException.class)), CreateUserUnfulfiilledTask.internalServerError(userDto))
+                )))
+                .isSuccess();
     }
 
 }

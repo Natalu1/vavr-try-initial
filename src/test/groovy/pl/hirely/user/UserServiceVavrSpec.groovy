@@ -13,7 +13,7 @@ class UserServiceVavrSpec extends Specification {
     private UserClient userClient = Mock()
 
     @Subject
-    private UserService userService = new UserServiceVavr(userClient)
+    private UserService userService = new UserServiceVavr(userClient, emailSender, kafkaClient)
 
     def "should getCommaSeparateUserNames "(){
         given:

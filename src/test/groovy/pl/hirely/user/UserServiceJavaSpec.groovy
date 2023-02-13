@@ -1,6 +1,7 @@
 package pl.hirely.user
 
 import io.vavr.control.Option
+import pl.hirely.user.client.BadRequestException
 import pl.hirely.user.client.InternalServerErrorException
 import pl.hirely.user.client.NotFoundException
 import pl.hirely.user.client.UserClient
@@ -12,11 +13,13 @@ import java.time.LocalDate
 
 class UserServiceJavaSpec extends Specification {
 
-    private UserClient userClient = Mock()
+    private final UserClient userClient = Mock()
+    private final EmailSender emailSender = Mock()
+    private final KafkaClient kafkaClient = Mock()
 
     @Subject
-//    private UserService userService = new UserServiceJava(userClient)
-    private UserService userService = new UserServiceVavr(userClient)
+//    private UserService userService = new UserServiceJava(userClient, emailSender, kafkaClient)
+    private UserService userService = new UserServiceVavr(userClient, emailSender, kafkaClient)
 
     def "should return all users"() {
 
@@ -180,6 +183,7 @@ class UserServiceJavaSpec extends Specification {
         where:
         clientException << new NotFoundException()
     }
+
     def "should  exception when client failed1"() {
         given:
         userClient.findByName("Anna") >> { throw clientException }
@@ -188,7 +192,7 @@ class UserServiceJavaSpec extends Specification {
 
 
         then:
-        actual == "Server error while fetching user with Anna"||"Not found while fetching user with name: Anna"
+        actual == "Server error while fetching user with Anna" || "Not found while fetching user with name: Anna"
 
         where:
         clientException << [new InternalServerErrorException(), new NotFoundException()]
@@ -205,9 +209,9 @@ class UserServiceJavaSpec extends Specification {
         actual == expectedResult
 
         where:
-        exceptionThrownByClient | expectedResult
+        exceptionThrownByClient            | expectedResult
         new InternalServerErrorException() | "Server error while fetching user with name: Paul"
-        new NotFoundException() | "Not found while fetching user with name: Paul"
+        new NotFoundException()            | "Not found while fetching user with name: Paul"
     }
 
 
@@ -221,10 +225,43 @@ class UserServiceJavaSpec extends Specification {
 
         where:
 
-        data                                         || expectedActual
-        Option.of(new UserDto(name: "Anna"))         || "User found"
-        Option.none()                                || "User with name: Anna does not exist"
+        data                                 || expectedActual
+        Option.of(new UserDto(name: "Anna")) || "User found"
+        Option.none()                        || "User with name: Anna does not exist"
+    }
 
+    def "should create id user "() {
+        given:
+        def userUuid = UUID.randomUUID()
+        def userDto = new UserDto(name: "Anna")
+        userClient.createUser(userDto) >> userUuid
+        when:
+        def actual = userService.createUser(userDto)
+        then:
+        actual
+        1 * emailSender.send(String.format("User with id: %s created", userUuid))
+    }
+
+    def "should return exception message"() {
+        def userDto = new UserDto(name: "Anna")
+
+        userClient.createUser(userDto) >> { throw clientException }
+
+        when:
+        def actual = userService.createUser(userDto)
+        then:
+        !actual
+        1 * kafkaClient.send({ task ->
+            task.getReason() == expectedResason
+            task.userDto.name == userDto.name
+        })
+        0 * emailSender.send(_)
+
+        where:
+        expectedResason              | clientException
+        Reason.INTERNAL_SERVER_ERROR | new InternalServerErrorException()
+        Reason.NOT_FOUND             | new NotFoundException()
+        Reason.BAD_REQUEST           | new BadRequestException()
 
     }
 

@@ -95,7 +95,7 @@ public class UserServiceJava implements UserService {
         try {
             UUID userId = userClient.createUser(userDto);
             if (userId != null) {
-                emailSender.send(String.format("User with id: %s created", userDto));
+                emailSender.send(String.format("User with id: %s created", userId));
                 return true;
             }
         } catch (InternalServerErrorException e) {
