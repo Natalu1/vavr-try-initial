@@ -15,4 +15,10 @@ public class UserDto {
     public LocalDate getBirthDate() {
         return birthDate;
     }
+
+    @Override
+    public String toString() {
+        return "name=" + name
+                ;
+    }
 }
